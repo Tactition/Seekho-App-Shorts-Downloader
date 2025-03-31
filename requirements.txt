@@ -2,3 +2,5 @@ flask
 pyrogram
 requests
 tgcrypto
+selenium
+webdriver-manager

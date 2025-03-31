@@ -2,8 +2,10 @@ FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1
 
-# Install ffmpeg
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+# Install required packages for Selenium, Chrome, and FFmpeg
+RUN apt-get update && apt-get install -y \
+    chromium chromium-driver ffmpeg wget unzip \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -11,6 +13,10 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . /app
+
+# Set environment variables for Selenium
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
 EXPOSE 8080
 
