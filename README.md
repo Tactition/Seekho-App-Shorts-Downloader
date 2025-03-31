@@ -13,16 +13,19 @@
   - Instant download via simple commands
   - Support for custom output filenames
   - Automatic file cleanup after download
+  - **User tracking and broadcasting** (NEW)
 
 - **🌐 Web Interface**
   - Browser-based video downloads
   - Simple and intuitive UI
   - Health check endpoints for monitoring
+  - **Admin panel to view registered users** (NEW)
 
 - **⚙️ Technical Capabilities**
   - Extracts m3u8 links from Seekho pages
   - High-quality downloads using FFmpeg
   - Concurrent operation with threading
+  - **Persistent user storage in JSON file** (NEW)
 
 ## 📋 How It Works
 
@@ -31,6 +34,7 @@
 3. FFmpeg downloads and processes the video
 4. Video is delivered to the user
 5. Temporary files are automatically cleaned up
+6. **User IDs are stored for future broadcasting** (NEW)
 
 ## 🛠️ Prerequisites
 
@@ -58,20 +62,23 @@ Create a `.env` file with the following variables:
 ```
 BOT_TOKEN=your_telegram_bot_token
 KOYEB_URL=your_public_facing_url
+ADMIN_USER_ID=your_telegram_user_id
 ```
 
 ### Running the Bot
 
 ```bash
-python main.py
+python bot.py
 ```
 
 ## 🤖 Bot Commands
 
 | Command | Description |
 |---------|-------------|
-| `/start` | Welcome message with instructions |
+| `/start` | Welcome message with instructions; saves user ID (NEW) |
 | `/download <video_link> [filename]` | Download video from the provided link |
+| `/broadcast <message>` | Sends a message to all registered users (NEW) |
+| `/stats` | Shows total number of registered users (NEW) |
 
 ## 🌐 Web Interface
 
@@ -80,6 +87,7 @@ Access the web interface at your deployment URL to download videos through your 
 - **Health Check**: `/` endpoint returns "OK"
 - **Download API**: `/download` endpoint processes download requests
 - **User Interface**: Served from static HTML files
+- **Admin User List**: `/admin/users` to view registered users (NEW)
 
 ## 📊 System Architecture
 
@@ -105,6 +113,7 @@ Access the web interface at your deployment URL to download videos through your 
 - The bot only processes public Seekho video links
 - No user credentials are required or stored
 - Temporary downloaded files are deleted after processing
+- **User data is stored in a local JSON file and is not shared externally** (NEW)
 
 ## 🤝 Contributing
 
@@ -117,5 +126,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 <div align="center">
-  <p>Created with ❤️ for Seekho learners everywhere</p>
+  <p>Created with ❤️ for Seekho learners everywhere.. We are not Responsible if you will use the script illegally .. its just for educational purpose and to download the videos and put them into your Social media Statuses to Showcase the learnings</p>
 </div>
+
