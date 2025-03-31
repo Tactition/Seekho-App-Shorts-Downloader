@@ -1,6 +1,4 @@
-pyrogram
-tgcrypto
 flask
-selenium
+pyrogram
 requests
-webdriver-manager
+tgcrypto
