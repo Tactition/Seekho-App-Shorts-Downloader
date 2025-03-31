@@ -170,7 +170,7 @@ def download_handler(client, message: Message):
 
     # Resolve shortened URL if necessary
     video_link = process_video_link(video_link)
-    message.reply_text(f"Processing URL: {video_link}")
+    message.reply_text(f"Processing URL: Just wait Till I finish downloading the video. Till Then Join the @Self_Improvement_Audiobooks to Get the Premium Audiobooks for Free.")
 
     try:
         response = requests.get(video_link, timeout=10)
