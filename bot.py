@@ -8,7 +8,7 @@ from pyrogram.types import Message
 # Replace with your actual credentials
 API_ID = 26205215  # Your App API ID
 API_HASH = "d4d9b7bce6d76bec759e404ecf2c3ebf"  # Your App API Hash
-BOT_TOKEN = "7235447334:AAFZ4rBUNV6wsD2hvMB3zXxlU7M9GFj7dGM"  # Your Bot Token
+BOT_TOKEN = "7858262825:AAE1GT1qdWl6XRRJ0R-2LTwvQliTAIvpD4w"  # Your Bot Token
 
 # Folder to store downloaded videos temporarily
 DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
