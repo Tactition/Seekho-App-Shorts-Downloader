@@ -202,7 +202,7 @@ def start_handler(client, message: Message):
         "/download https://seekho.in/video/sample-video\n\n"
         "Or use a shortened link:\n"
         "/download https://seekho.page.link/example\n\n"
-        "The bot will automatically resolve shortened URLs, extract m3u8 links, download the video, and send it to you.\n\n"
+        "The bot will automatically Download the video, and send it to you.\n\n"
         "Alternatively, you can also visit our web interface at: " + KOYEB_URL
     )
     
