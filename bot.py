@@ -9,7 +9,7 @@ import json
 import asyncio
 import aiohttp
 import logging
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from pyrogram.types import Message
 from flask import Flask, request, jsonify, send_from_directory
 from threading import Thread
@@ -171,11 +171,21 @@ async def ping_server():
             logger.error(f"Keep-alive ping failed: {e}")
         await asyncio.sleep(PING_INTERVAL)
 
-@app.on_start()
-async def start_ping_task(client):
-    """Start the keep-alive task when bot starts"""
-    logger.info("Starting keep-alive background task")
-    client.ping_task = asyncio.create_task(ping_server())
+async def main():
+    await app.start()
+    logger.info("Bot started!")
+    
+    # Start keep-alive task
+    asyncio.create_task(ping_server())
+    
+    # Start Flask in a separate thread
+    Thread(target=run_health_app, daemon=True).start()
+    
+    # Keep the bot running
+    await idle()
+    
+    # Cleanup
+    await app.stop()
 
 @app.on_message(filters.command("start"))
 def start_handler(client, message: Message):
@@ -336,8 +346,6 @@ if __name__ == "__main__":
     if not os.path.exists(USERS_FILE):
         with open(USERS_FILE, 'w') as f:
             json.dump({"users": []}, f)
-            
-    health_thread = Thread(target=run_health_app)
-    health_thread.daemon = True
-    health_thread.start()
-    app.run()
+    
+    # Start the application
+    asyncio.run(main())
