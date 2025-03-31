@@ -109,7 +109,7 @@ def download_handler(client, message: Message):
             os.remove(output_path)
             print(f"Deleted temporary file: {output_path}")
 
-# Minimal Flask app for health checks
+# Minimal Flask app for health checks and to serve static pages if needed.
 health_app = Flask("health")
 
 @health_app.route("/")
