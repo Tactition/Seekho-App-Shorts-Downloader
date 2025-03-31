@@ -2,11 +2,16 @@ import os
 import re
 import subprocess
 import requests
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from flask import Flask, request, jsonify, send_from_directory
 from threading import Thread
+import time
+
+# Import Selenium modules for URL resolution
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 # Replace with your actual credentials
 API_ID = 26205215  # Your App API ID
@@ -21,40 +26,29 @@ DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
-def clean_url(url):
+def resolve_url_with_selenium(url):
     """
-    Removes query parameters from the URL if the path starts with /video/.
+    Resolves a URL by opening it in a headless browser using Selenium.
+    This is used for shortened URLs (e.g., containing '.page.link').
     """
-    parsed = urlparse(url)
-    if parsed.path.startswith("/video/"):
-        return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
-    return url
-
-def resolve_shortened_url(url):
-    """
-    Resolves a shortened URL by following redirects and returns the final URL.
-    Uses a GET request with streaming to avoid downloading full content.
-    """
-    try:
-        response = requests.get(url, allow_redirects=True, stream=True, timeout=10)
-        final_url = response.url
-        response.close()
-        return clean_url(final_url)
-    except Exception as e:
-        print(f"Error resolving URL: {e}")
-        return url
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    # Ensure chromedriver is in your PATH.
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get(url)
+    # Wait for potential redirects and JS-based navigation to finish
+    time.sleep(5)
+    final_url = driver.current_url
+    driver.quit()
+    return final_url
 
 def extract_m3u8_links(html_content):
-    """
-    Extracts all m3u8 links from the provided HTML content using regex.
-    """
     links = re.findall(r"(https?://[^\s'\"<>]+\.m3u8)", html_content)
     return links
 
 def download_with_ffmpeg(m3u8_url, output_path):
-    """
-    Uses ffmpeg to download a video from the provided m3u8 URL.
-    """
     try:
         command = [
             "ffmpeg", "-i", m3u8_url, "-c", "copy", "-bsf:a", "aac_adtstoasc", "-y", output_path
@@ -65,7 +59,7 @@ def download_with_ffmpeg(m3u8_url, output_path):
     except subprocess.CalledProcessError as e:
         raise Exception(f"FFmpeg error: {e}")
 
-# Initialize the Telegram bot client with API credentials
+# Telegram bot setup
 app = Client("seekho_downloader_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 @app.on_message(filters.command("start"))
@@ -88,12 +82,12 @@ def download_handler(client, message: Message):
         return
 
     video_link = message.command[1].strip()
-    # Check if URL appears shortened (e.g., contains 'page.link')
-    if 'page.link' in os.path.basename(urlparse(video_link).netloc):
+    # If the URL is shortened (contains '.page.link'), resolve it with Selenium
+    if 'page.link' in urlparse(video_link).netloc:
         message.reply_text("Shortened URL detected. Resolving...")
-        resolved_link = resolve_shortened_url(video_link)
-        message.reply_text(f"Resolved URL: {resolved_link}")
-        video_link = resolved_link
+        resolved_url = resolve_url_with_selenium(video_link)
+        message.reply_text(f"Resolved URL: {resolved_url}")
+        video_link = resolved_url
 
     output_file = message.command[2].strip() if len(message.command) > 2 else "output_video.mp4"
     if not output_file.lower().endswith(".mp4"):
@@ -131,7 +125,7 @@ def download_handler(client, message: Message):
             os.remove(output_path)
             print(f"Deleted temporary file: {output_path}")
 
-# Flask app setup for health checks and serving the frontend (index.html)
+# Flask app setup for health checks and serving the web interface
 health_app = Flask(__name__, static_folder=os.getcwd(), static_url_path='/')
 
 @health_app.route("/")
@@ -148,8 +142,8 @@ def process_download():
         return jsonify({"success": False, "error": "No video link provided."}), 400
 
     # Resolve shortened URL if needed
-    if 'page.link' in os.path.basename(urlparse(video_link).netloc):
-        video_link = resolve_shortened_url(video_link)
+    if 'page.link' in urlparse(video_link).netloc:
+        video_link = resolve_url_with_selenium(video_link)
 
     output_path = os.path.join(DOWNLOAD_FOLDER, output_file)
     try:

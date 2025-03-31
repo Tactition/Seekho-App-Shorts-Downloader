@@ -1,4 +1,5 @@
-flask
 pyrogram
 requests
+flask
+selenium
 tgcrypto
