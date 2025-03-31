@@ -1,6 +1,5 @@
-flask>=3.0.0
-pyrogram>=2.0.0
-requests>=2.31.0
-tgcrypto>=1.2.3
-aiohttp>=3.9.0
-ffmpeg-python>=0.2.0  # Add this if you're using ffmpeg-python wrappers
+flask
+pyrogram
+requests
+tgcrypto
+aiohttp
