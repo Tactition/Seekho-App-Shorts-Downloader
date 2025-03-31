@@ -12,6 +12,9 @@ API_ID = 26205215  # Your App API ID
 API_HASH = "d4d9b7bce6d76bec759e404ecf2c3ebf"  # Your App API Hash
 BOT_TOKEN = "7858262825:AAE1GT1qdWl6XRRJ0R-2LTwvQliTAIvpD4w"  # Your Bot Token
 
+# Dynamically get the Koyeb public URL from environment variable; default provided if not set.
+KOYEB_URL = os.environ.get("KOYEB_URL", "https://example.koyeb.app")
+
 # Folder to store downloaded videos temporarily
 DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
 if not os.path.exists(DOWNLOAD_FOLDER):
@@ -34,7 +37,6 @@ def download_with_ffmpeg(m3u8_url, output_path):
 
 # Telegram bot setup
 app = Client("seekho_downloader_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-
 @app.on_message(filters.command("start"))
 def start_handler(client, message: Message):
     welcome_text = (
@@ -42,8 +44,9 @@ def start_handler(client, message: Message):
         "To download a video, use the command:\n"
         "/download <video_link>\n\n"
         "Example:\n"
-        "/download https://seekho.in/video/sample-video \n\n"
-        "The bot will fetch the video page, extract m3u8 links, download the video, and send it to you."
+        "/download https://seekho.in/video/sample-video\n\n"
+        "The bot will fetch the video page, extract m3u8 links, download the video, and send it to you.\n\n"
+        "Alternatively, you can also visit our web interface at: " + KOYEB_URL
     )
     message.reply_text(welcome_text)
 
