@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 import requests
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from flask import Flask, request, jsonify, send_from_directory
@@ -21,13 +21,25 @@ DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
+def clean_url(url):
+    """
+    Removes query parameters from the URL if the path starts with /video/.
+    """
+    parsed = urlparse(url)
+    if parsed.path.startswith("/video/"):
+        return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+    return url
+
 def resolve_shortened_url(url):
     """
     Resolves a shortened URL by following redirects and returns the final URL.
+    Uses a GET request with streaming to avoid downloading full content.
     """
     try:
-        response = requests.head(url, allow_redirects=True, timeout=10)
-        return response.url
+        response = requests.get(url, allow_redirects=True, stream=True, timeout=10)
+        final_url = response.url
+        response.close()
+        return clean_url(final_url)
     except Exception as e:
         print(f"Error resolving URL: {e}")
         return url
@@ -45,12 +57,7 @@ def download_with_ffmpeg(m3u8_url, output_path):
     """
     try:
         command = [
-            "ffmpeg",
-            "-i", m3u8_url,
-            "-c", "copy",
-            "-bsf:a", "aac_adtstoasc",
-            "-y",  # Overwrite file if exists
-            output_path
+            "ffmpeg", "-i", m3u8_url, "-c", "copy", "-bsf:a", "aac_adtstoasc", "-y", output_path
         ]
         print("Running ffmpeg command:", " ".join(command))
         subprocess.run(command, check=True)
@@ -81,11 +88,12 @@ def download_handler(client, message: Message):
         return
 
     video_link = message.command[1].strip()
-    # If URL is shortened (contains 'page.link' or similar), resolve it
-    if 'page.link' in urlparse(video_link).netloc:
+    # Check if URL appears shortened (e.g., contains 'page.link')
+    if 'page.link' in os.path.basename(urlparse(video_link).netloc):
         message.reply_text("Shortened URL detected. Resolving...")
-        video_link = resolve_shortened_url(video_link)
-        message.reply_text(f"Resolved URL: {video_link}")
+        resolved_link = resolve_shortened_url(video_link)
+        message.reply_text(f"Resolved URL: {resolved_link}")
+        video_link = resolved_link
 
     output_file = message.command[2].strip() if len(message.command) > 2 else "output_video.mp4"
     if not output_file.lower().endswith(".mp4"):
@@ -123,7 +131,7 @@ def download_handler(client, message: Message):
             os.remove(output_path)
             print(f"Deleted temporary file: {output_path}")
 
-# Flask app setup for health checks and to serve static pages
+# Flask app setup for health checks and serving the frontend (index.html)
 health_app = Flask(__name__, static_folder=os.getcwd(), static_url_path='/')
 
 @health_app.route("/")
@@ -140,7 +148,7 @@ def process_download():
         return jsonify({"success": False, "error": "No video link provided."}), 400
 
     # Resolve shortened URL if needed
-    if 'page.link' in urlparse(video_link).netloc:
+    if 'page.link' in os.path.basename(urlparse(video_link).netloc):
         video_link = resolve_shortened_url(video_link)
 
     output_path = os.path.join(DOWNLOAD_FOLDER, output_file)
