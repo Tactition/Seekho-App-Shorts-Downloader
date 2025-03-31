@@ -5,6 +5,7 @@ import requests
 import socket
 import ssl
 import urllib.parse
+import json
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from flask import Flask, request, jsonify, send_from_directory
@@ -22,6 +23,50 @@ KOYEB_URL = os.environ.get("KOYEB_URL", "https://example.koyeb.app")
 DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
+
+# File to store user IDs
+USERS_FILE = "users.json"
+
+# Function to load users from file
+def load_users():
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print("Error reading users file. Creating new one.")
+            return {"users": []}
+    return {"users": []}
+
+# Function to save users to file
+def save_user(user_id, username=None, first_name=None):
+    data = load_users()
+    # Check if user already exists
+    user_exists = False
+    for user in data["users"]:
+        if user["id"] == user_id:
+            user_exists = True
+            # Update user information if changed
+            if username and user.get("username") != username:
+                user["username"] = username
+            if first_name and user.get("first_name") != first_name:
+                user["first_name"] = first_name
+            break
+    
+    # Add user if they don't exist
+    if not user_exists:
+        data["users"].append({
+            "id": user_id,
+            "username": username,
+            "first_name": first_name,
+            "joined_at": str(os.path.getmtime(USERS_FILE)) if os.path.exists(USERS_FILE) else str(os.path.getctime(__file__))
+        })
+    
+    # Save updated user list
+    with open(USERS_FILE, 'w') as f:
+        json.dump(data, f, indent=4)
+    
+    return not user_exists  # Return True if new user
 
 def resolve_shortened_url(url):
     """
@@ -139,10 +184,18 @@ def process_video_link(video_link):
 
 # Telegram bot setup
 app = Client("seekho_downloader_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
 @app.on_message(filters.command("start"))
 def start_handler(client, message: Message):
+    # Save user information
+    user_id = message.from_user.id
+    username = message.from_user.username
+    first_name = message.from_user.first_name
+    
+    is_new_user = save_user(user_id, username, first_name)
+    
     welcome_text = (
-        "Welcome to the Seekho Video Downloader Bot!\n\n"
+        f"Welcome {first_name} to the Seekho Video Downloader Bot!\n\n"
         "To download a video, use the command:\n"
         "/download <video_link>\n\n"
         "Example:\n"
@@ -152,7 +205,62 @@ def start_handler(client, message: Message):
         "The bot will automatically resolve shortened URLs, extract m3u8 links, download the video, and send it to you.\n\n"
         "Alternatively, you can also visit our web interface at: " + KOYEB_URL
     )
+    
     message.reply_text(welcome_text)
+    
+    # Notify admin about new user if it's a new user
+    if is_new_user:
+        print(f"New user registered: {username} ({user_id})")
+
+@app.on_message(filters.command("broadcast") & filters.user([1178233430])) # Replace ADMIN_USER_ID with your admin user ID
+def broadcast_handler(client, message: Message):
+    # Check if there's a message to broadcast
+    if len(message.command) < 2:
+        message.reply_text("Usage: /broadcast Your message here")
+        return
+    
+    # Get the broadcast message
+    broadcast_text = message.text.split("/broadcast ", 1)[1]
+    
+    # Load all users
+    data = load_users()
+    user_count = len(data["users"])
+    successful = 0
+    failed = 0
+    
+    # Send status message
+    status_msg = message.reply_text(f"Broadcasting message to {user_count} users...")
+    
+    # Broadcast the message
+    for user in data["users"]:
+        try:
+            client.send_message(user["id"], broadcast_text)
+            successful += 1
+        except Exception as e:
+            print(f"Failed to send message to {user['id']}: {e}")
+            failed += 1
+    
+    # Update status message
+    client.edit_message_text(
+        message.chat.id,
+        status_msg.id,
+        f"Broadcast completed!\n"
+        f"• Total users: {user_count}\n"
+        f"• Successful: {successful}\n"
+        f"• Failed: {failed}"
+    )
+
+@app.on_message(filters.command("stats") & filters.user([1178233430])) # Replace ADMIN_USER_ID with your admin user ID
+def stats_handler(client, message: Message):
+    data = load_users()
+    user_count = len(data["users"])
+    
+    stats_text = (
+        f"📊 Bot Statistics 📊\n\n"
+        f"Total registered users: {user_count}\n"
+    )
+    
+    message.reply_text(stats_text)
 
 @app.on_message(filters.command("download"))
 def download_handler(client, message: Message):
@@ -170,7 +278,7 @@ def download_handler(client, message: Message):
 
     # Resolve shortened URL if necessary
     video_link = process_video_link(video_link)
-    message.reply_text(f"Processing URL: Just wait Till I finish downloading the video. Till Then Join the @Self_Improvement_Audiobooks to Get the Premium Audiobooks for Free.")
+    message.reply_text(f"Processing URL: Just wait Till I finish downloading the video while i am downlaoding the video. Join the @Self_Improvement_Audiobooks to Get the Premium Audiobooks for Free.")
 
     try:
         response = requests.get(video_link, timeout=10)
@@ -241,6 +349,12 @@ def process_download():
 
     return jsonify({"success": True, "download_url": f"/downloads/{output_file}"})
 
+@health_app.route("/admin/users", methods=["GET"])
+def get_users():
+    # This should be protected with authentication in production
+    data = load_users()
+    return jsonify(data)
+
 @health_app.route("/downloads/<filename>")
 def serve_download(filename):
     return send_from_directory(DOWNLOAD_FOLDER, filename)
@@ -250,6 +364,11 @@ def run_health_app():
     health_app.run(host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
+    # Initialize users.json if it doesn't exist
+    if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'w') as f:
+            json.dump({"users": []}, f)
+            
     health_thread = Thread(target=run_health_app)
     health_thread.daemon = True
     health_thread.start()
