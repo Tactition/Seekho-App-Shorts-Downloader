@@ -84,7 +84,7 @@ python bot.py
 
 Access the web interface at your deployment URL to download videos through your browser.
 
-- **Health Check**: `/` endpoint returns "OK"
+- **Health Check**: `/` endpoint returns "Web Page to Downlaod From Website"
 - **Download API**: `/download` endpoint processes download requests
 - **User Interface**: Served from static HTML files
 - **Admin User List**: `/admin/users` to view registered users (NEW)
