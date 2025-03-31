@@ -40,9 +40,9 @@ def start_handler(client, message: Message):
     welcome_text = (
         "Welcome to the Seekho Video Downloader Bot!\n\n"
         "To download a video, use the command:\n"
-        "/download <video_link> [optional_output_file_name]\n\n"
+        "/download <video_link>\n\n"
         "Example:\n"
-        "/download https://seekho.in/video/sample-video my_video.mp4\n\n"
+        "/download https://seekho.in/video/sample-video \n\n"
         "The bot will fetch the video page, extract m3u8 links, download the video, and send it to you."
     )
     message.reply_text(welcome_text)
