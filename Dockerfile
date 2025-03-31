@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1
 
-# Install required packages for Selenium, Chrome, and FFmpeg
+# Install Chromium, ChromeDriver dependencies, and FFmpeg
 RUN apt-get update && apt-get install -y \
     chromium chromium-driver ffmpeg wget unzip \
     && rm -rf /var/lib/apt/lists/*
