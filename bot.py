@@ -20,14 +20,35 @@ DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
+def resolve_url(short_url):
+    """
+    Resolves a shortened URL by following redirects and returning the final URL.
+    """
+    try:
+        response = requests.get(short_url, allow_redirects=True, timeout=10)
+        return response.url
+    except Exception as e:
+        raise Exception(f"Error resolving URL: {e}")
+
 def extract_m3u8_links(html_content):
+    """
+    Extracts all m3u8 links from the provided HTML content using regex.
+    """
     links = re.findall(r"(https?://[^\s'\"<>]+\.m3u8)", html_content)
     return links
 
 def download_with_ffmpeg(m3u8_url, output_path):
+    """
+    Uses ffmpeg to download a video from the provided m3u8 URL.
+    """
     try:
         command = [
-            "ffmpeg", "-i", m3u8_url, "-c", "copy", "-bsf:a", "aac_adtstoasc", "-y", output_path
+            "ffmpeg",
+            "-i", m3u8_url,
+            "-c", "copy",
+            "-bsf:a", "aac_adtstoasc",
+            "-y",  # Overwrite file if exists
+            output_path
         ]
         print("Running ffmpeg command:", " ".join(command))
         subprocess.run(command, check=True)
@@ -35,16 +56,20 @@ def download_with_ffmpeg(m3u8_url, output_path):
     except subprocess.CalledProcessError as e:
         raise Exception(f"FFmpeg error: {e}")
 
-# Telegram bot setup
+# Initialize the Telegram bot client with API credentials
 app = Client("seekho_downloader_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
 @app.on_message(filters.command("start"))
 def start_handler(client, message: Message):
+    """
+    Sends a welcome message with instructions on how to use the bot.
+    """
     welcome_text = (
         "Welcome to the Seekho Video Downloader Bot!\n\n"
         "To download a video, use the command:\n"
-        "/download <video_link>\n\n"
+        "/download <video_link> [optional_output_file_name]\n\n"
         "Example:\n"
-        "/download https://seekho.in/video/sample-video\n\n"
+        "/download https://seekho.in/video/sample-video my_video.mp4\n\n"
         "The bot will fetch the video page, extract m3u8 links, download the video, and send it to you.\n\n"
         "Alternatively, you can also visit our web interface at: " + KOYEB_URL
     )
@@ -52,11 +77,22 @@ def start_handler(client, message: Message):
 
 @app.on_message(filters.command("download"))
 def download_handler(client, message: Message):
+    """
+    Handles the /download command.
+    Usage: /download <video_link> [optional_output_file_name]
+    """
     if len(message.command) < 2:
         message.reply_text("Usage: /download <video link> [output file name]")
         return
 
+    # Resolve the URL if it's shortened
     video_link = message.command[1].strip()
+    try:
+        resolved_link = resolve_url(video_link)
+    except Exception as e:
+        message.reply_text(f"Error resolving URL: {e}")
+        return
+
     output_file = message.command[2].strip() if len(message.command) > 2 else "output_video.mp4"
     if not output_file.lower().endswith(".mp4"):
         output_file += ".mp4"
@@ -65,7 +101,7 @@ def download_handler(client, message: Message):
     message.reply_text("Processing your request. Please wait...")
 
     try:
-        response = requests.get(video_link, timeout=10)
+        response = requests.get(resolved_link, timeout=10)
         response.raise_for_status()
         html_content = response.text
     except Exception as e:
@@ -93,7 +129,7 @@ def download_handler(client, message: Message):
             os.remove(output_path)
             print(f"Deleted temporary file: {output_path}")
 
-# Flask app setup
+# Flask app setup for health checks and serving index.html
 health_app = Flask(__name__, static_folder=os.getcwd(), static_url_path='/')
 
 @health_app.route("/")
@@ -105,13 +141,17 @@ def process_download():
     data = request.json
     video_link = data.get("video_link")
     output_file = data.get("output_file", "output_video.mp4")
-
     if not video_link:
         return jsonify({"success": False, "error": "No video link provided."}), 400
 
+    try:
+        resolved_link = resolve_url(video_link)
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Error resolving URL: {e}"}), 400
+
     output_path = os.path.join(DOWNLOAD_FOLDER, output_file)
     try:
-        response = requests.get(video_link, timeout=10)
+        response = requests.get(resolved_link, timeout=10)
         response.raise_for_status()
         html_content = response.text
     except Exception as e:
@@ -141,4 +181,5 @@ if __name__ == "__main__":
     health_thread = Thread(target=run_health_app)
     health_thread.daemon = True
     health_thread.start()
+    
     app.run()
