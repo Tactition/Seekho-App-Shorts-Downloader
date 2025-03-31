@@ -47,7 +47,8 @@
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          statusMessage.innerHTML = `<p class="text-success">Download Ready! <a href="${data.download_url}" class="btn btn-success">Click to Download</a></p>`;
+          statusMessage.innerHTML = `<p class="text-success">Download Ready! <a href="${data.download_url}" class="btn btn-success">Click to open the Video</a></p>
+          <a href="${data.download_url}" class="btn btn-success" download>Click to download> </a>`;
         } else {
           statusMessage.innerHTML = `<p class="text-danger">Error: ${data.error}</p>`;
         }
