@@ -213,15 +213,16 @@ def start_handler(client, message: Message):
     is_new_user = save_user(user_id, username, first_name)
     
     welcome_text = (
-        f"Welcome {first_name} to the Seekho Video Downloader Bot!\n\n"
+        f"Welcome <b> {first_name} </b>to the Seekho Video Downloader Bot!\n\n"
         "To download a video, use the command:\n"
         "/download <video_link>\n\n"
         "Example:\n"
-        "/download https://seekho.in/video/sample-video\n\n"
+        "/download https://seekho.in/video-link\n\n"
         "Or use a shortened link:\n"
         "/download https://seekho.page.link/example\n\n"
         "The bot will automatically Download the video, and Will send it to you.\n\n"
-        "Alternatively, you can also visit our web interface at: " + KOYEB_URL
+        "Alternatively, you can also visit our web interface at: " + KOYEB_URL + "\n\n"
+        "Also Join @Self_Improvement_Audiobooks for Premium Audiobooks!\n\n"
     )
     
     message.reply_text(welcome_text)
