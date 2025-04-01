@@ -220,7 +220,7 @@ def start_handler(client, message: Message):
         "/download https://seekho.in/video/sample-video\n\n"
         "Or use a shortened link:\n"
         "/download https://seekho.page.link/example\n\n"
-        "The bot will automatically resolve shortened URLs, extract m3u8 links, download the video, and send it to you.\n\n"
+        "The bot will automatically Download the video, and Will send it to you.\n\n"
         "Alternatively, you can also visit our web interface at: " + KOYEB_URL
     )
     
@@ -299,7 +299,7 @@ def download_handler(client, message: Message):
 
     # Resolve shortened URL if necessary
     video_link = process_video_link(video_link)
-    message.reply_text(f"Processing URL: {video_link}")
+    message.reply_text(f"Processing URL: Downloading video.Till then  Join @Self_Improvement_Audiobooks for Premium Audiobooks!")
 
     try:
         response = requests.get(video_link, timeout=10)
