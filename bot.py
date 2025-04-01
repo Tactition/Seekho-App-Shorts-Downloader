@@ -6,6 +6,7 @@ import socket
 import ssl
 import urllib.parse
 import json
+import time
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from flask import Flask, request, jsonify, send_from_directory
@@ -19,6 +20,9 @@ BOT_TOKEN = "7858262825:AAE1GT1qdWl6XRRJ0R-2LTwvQliTAIvpD4w"  # Your Bot Token
 # Dynamically get the Koyeb public URL from environment variable; default provided if not set.
 KOYEB_URL = os.environ.get("KOYEB_URL", "https://example.koyeb.app")
 
+# Keep alive interval in seconds
+KEEP_ALIVE_INTERVAL = 30
+
 # Folder to store downloaded videos temporarily
 DOWNLOAD_FOLDER = os.path.join(os.getcwd(), "downloads")
 if not os.path.exists(DOWNLOAD_FOLDER):
@@ -26,6 +30,20 @@ if not os.path.exists(DOWNLOAD_FOLDER):
 
 # File to store user IDs
 USERS_FILE = "users.json"
+
+# Function for keep-alive pinging
+def keep_alive():
+    print("Starting keep-alive service...")
+    while True:
+        try:
+            response = requests.get(KOYEB_URL, timeout=10)
+            status = response.status_code
+            print(f"Keep-alive ping sent. Status: {status}")
+        except Exception as e:
+            print(f"Keep-alive ping failed: {e}")
+        
+        # Sleep for the specified interval
+        time.sleep(KEEP_ALIVE_INTERVAL)
 
 # Function to load users from file
 def load_users():
@@ -202,7 +220,7 @@ def start_handler(client, message: Message):
         "/download https://seekho.in/video/sample-video\n\n"
         "Or use a shortened link:\n"
         "/download https://seekho.page.link/example\n\n"
-        "The bot will automatically Download the video, and send it to you.\n\n"
+        "The bot will automatically resolve shortened URLs, extract m3u8 links, download the video, and send it to you.\n\n"
         "Alternatively, you can also visit our web interface at: " + KOYEB_URL
     )
     
@@ -212,7 +230,10 @@ def start_handler(client, message: Message):
     if is_new_user:
         print(f"New user registered: {username} ({user_id})")
 
-@app.on_message(filters.command("broadcast") & filters.user([1178233430])) # Replace ADMIN_USER_ID with your admin user ID
+# Replace ADMIN_USER_ID with your actual Telegram user ID
+ADMIN_USER_ID = 1178233430  # Change this to your Telegram user ID
+
+@app.on_message(filters.command("broadcast") & filters.user([ADMIN_USER_ID]))
 def broadcast_handler(client, message: Message):
     # Check if there's a message to broadcast
     if len(message.command) < 2:
@@ -250,7 +271,7 @@ def broadcast_handler(client, message: Message):
         f"• Failed: {failed}"
     )
 
-@app.on_message(filters.command("stats") & filters.user([1178233430])) # Replace ADMIN_USER_ID with your admin user ID
+@app.on_message(filters.command("stats") & filters.user([ADMIN_USER_ID]))
 def stats_handler(client, message: Message):
     data = load_users()
     user_count = len(data["users"])
@@ -278,7 +299,7 @@ def download_handler(client, message: Message):
 
     # Resolve shortened URL if necessary
     video_link = process_video_link(video_link)
-    message.reply_text(f"Processing URL: Just wait Till I finish downloading the video while i am downlaoding the video. Join the @Self_Improvement_Audiobooks to Get the Premium Audiobooks for Free.")
+    message.reply_text(f"Processing URL: {video_link}")
 
     try:
         response = requests.get(video_link, timeout=10)
@@ -349,6 +370,11 @@ def process_download():
 
     return jsonify({"success": True, "download_url": f"/downloads/{output_file}"})
 
+@health_app.route("/ping")
+def ping():
+    """Simple endpoint for keep-alive pings"""
+    return jsonify({"status": "alive", "timestamp": time.time()})
+
 @health_app.route("/admin/users", methods=["GET"])
 def get_users():
     # This should be protected with authentication in production
@@ -368,8 +394,19 @@ if __name__ == "__main__":
     if not os.path.exists(USERS_FILE):
         with open(USERS_FILE, 'w') as f:
             json.dump({"users": []}, f)
-            
+    
+    # Start keep-alive thread
+    keep_alive_thread = Thread(target=keep_alive)
+    keep_alive_thread.daemon = True
+    keep_alive_thread.start()
+    print("Keep-alive service started")
+    
+    # Start Flask app thread
     health_thread = Thread(target=run_health_app)
     health_thread.daemon = True
     health_thread.start()
+    print("Web server started")
+    
+    # Start the Telegram bot
+    print("Starting Telegram bot")
     app.run()
