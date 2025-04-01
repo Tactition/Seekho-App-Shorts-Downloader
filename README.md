@@ -79,6 +79,7 @@ python bot.py
 | `/download <video_link> [filename]` | Download video from the provided link |
 | `/broadcast <message>` | Sends a message to all registered users (NEW) |
 | `/stats` | Shows total number of registered users (NEW) |
+| `/ping` | show the uptime of Bot |
 
 ## 🌐 Web Interface
 
